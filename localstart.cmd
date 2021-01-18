@@ -1,0 +1,9 @@
+SET DBUSER=fieldnotesdb
+SET DBPWD=K1nderWorld
+REM MAILFROM=pwafieldnotes@gmail.com
+REM MAILFROMPWD=GoogleD1dthis?
+SET MAILUSER=apikey
+SET MAILFROMPWD=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
+SET MAILFROM=pwafieldnotes@gmail.com
+SET MAILTO=nigejohnson@yahoo.co.uk
+node .\echo-servers\cors-server
