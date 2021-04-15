@@ -145,7 +145,9 @@ app.post('/', [formParser, jsonParser, textParser], (req, res) => {
     payload.forEach(sendAnEmail);
   }
 
-  res.write('Snaps being posted to: ' + mailto);
+  var reformattedMailTo = mailto.replace(';', '<br>');
+
+  res.write('Snaps being posted to:<br>' + reformattedMailTo);
 
   res.end();
 });
