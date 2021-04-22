@@ -121,35 +121,49 @@ const textParser = _text({ limit: '500mb' });
 // app.use(bodyParser.urlencoded({limit: '500mb', extended: true}));
 
 app.post('/', [formParser, jsonParser, textParser], (req, res) => {
-  res.write('Snaps received successfully. ');
+  // res.write('Snaps received successfully. ');
+  // res.write starts responding to the client straight-away... from there-on you can't reset the
+  // response status to indicate an error!
 
-  console.log('Received snaps as follows:');
-  console.log('\n\n');
+  try {
+    console.log('Received snaps as follows:');
+    console.log('\n\n');
 
-  console.log(JSON.stringify(req.headers, null, 2));
-  console.log('\n\n');
+    console.log(JSON.stringify(req.headers, null, 2));
+    console.log('\n\n');
 
-  const contentType = req.get('content-type');
+    const contentType = req.get('content-type');
 
-  mailto = req.headers['configured-mailto'];
+    mailto = req.headers['configured-mailto'];
 
-  var payload = JSON.parse(req.body);
+    if (mailto === undefined) {
+      res.status(400).send('No configured-mailto header on request.');
+    }
 
-  console.log(req.body);
+    var payload = JSON.parse(req.body);
 
-  console.log('Content type is ' + contentType);
-  console.log('Finished receiving posted snaps.');
-  console.log('\n\n');
+    if (payload === undefined) {
+      res.status(400).send('No JSON payload on request.');
+    }
 
-  if (sendEmail) {
-    payload.forEach(sendAnEmail);
+    console.log(req.body);
+
+    console.log('Content type is ' + contentType);
+    console.log('Finished receiving posted snaps.');
+    console.log('\n\n');
+
+    if (sendEmail) {
+      payload.forEach(sendAnEmail);
+    }
+
+    var reformattedMailTo = mailto.replace(';', '<br>');
+
+    res.write('Snaps being posted to:<br>' + reformattedMailTo);
+
+    res.end();
+  } catch (e) {
+    res.status(500).send('Unexpected server side error: ' + e);
   }
-
-  var reformattedMailTo = mailto.replace(';', '<br>');
-
-  res.write('Snaps being posted to:<br>' + reformattedMailTo);
-
-  res.end();
 });
 
 const server = app.listen(port, () => {
