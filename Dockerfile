@@ -12,4 +12,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD [ "node", ".\echo-servers\cors-server" ]
+CMD [ "node", "./echo-servers/cors-server" ]
