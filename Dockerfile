@@ -10,6 +10,6 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 8080
+EXPOSE 5000
 
 CMD [ "node", ".\echo-servers\cors-server" ]
