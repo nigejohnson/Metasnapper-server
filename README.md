@@ -1,6 +1,7 @@
 # Metasnapper-server
 
-The server side, metasnapp distributing, back end for the apps here: https://github.com/nigejohnson/Metasnapper and here:  https://github.com/nigejohnson/Metasnapper-vue
+The server side, metasnapp distributing, back end for the apps here: https://github.com/nigejohnson/Metasnapper and here:  https://github.com/nigejohnson/Metasnapper-vue. This version using the Node Express framework.
+
 ## Licence
 
 THIS INFORMATION IS LICENSED UNDER THE CONDITIONS OF THE OPEN GOVERNMENT LICENCE found at:
