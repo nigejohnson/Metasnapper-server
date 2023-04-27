@@ -19,6 +19,7 @@ const sendEmail = true;
 const mailuser = process.env.MAILUSER;
 const mailfrompwd = process.env.MAILFROMPWD;
 const mailfrom = process.env.MAILFROM;
+const expectedorigins = process.env.EXPECTEDORIGINS;
 
 var defaultmailto = process.env.MAILTO; // Setting the default mailto address
 var mailto;
@@ -32,7 +33,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-function sendAnEmail (item) {
+function sendAnEmail(item) {
   console.log('Mail to is: ' + mailto);
   // The next line assumes that the datetime is in the defult javascript format of
   // 2021-04-17T14:50:29.046Z, and splits the date from the time to use in the file name
@@ -84,7 +85,7 @@ function sendAnEmail (item) {
   });
 }
 
-function handleEmailingError (item, error) {
+function handleEmailingError(item, error) {
   // As nodemailer is inherently asynchronous we need an asynchronous way to alert any errors
   // For now emailing, which is imperfect if the error is actually at our smtp service!
   console.log('Attempting to send the emailing error and email content to: ' + defaultmailto);
@@ -153,6 +154,8 @@ app.post('/', [formParser, jsonParser, textParser], (req, res) => {
 
     const contentType = req.get('content-type');
 
+    const origin = req.headers['origin'] || req.headers['host'];
+
     mailto = req.headers['configured-mailto'];
 
     if (mailto === undefined) {
@@ -163,12 +166,29 @@ app.post('/', [formParser, jsonParser, textParser], (req, res) => {
 
     if (payload === undefined) {
       res.status(400).send('No JSON payload on request.');
+      return;
+    }
+
+    if (expectedorigins) {
+      // Check that the origina is one of the expected ones
+      var expectedoriginsArray = expectedorigins.split(";");
+
+      if (expectedorigins) {
+
+        if (expectedoriginsArray.indexOf(origin) < 0) {
+          console.log("Expected origins array: " + expectedoriginsArray);
+          res.status(403).send('Not sending emails as origin ' + origin + ' is unexpected.');
+          return;
+        }
+      }
+
     }
 
     console.log(req.body);
 
     console.log('Content type is ' + contentType);
     console.log('Finished receiving posted snaps.');
+    console.log('ORIGIN:' + origin);
     console.log('\n\n');
 
     if (sendEmail) {
@@ -181,6 +201,7 @@ app.post('/', [formParser, jsonParser, textParser], (req, res) => {
 
     res.end();
   } catch (e) {
+    console.log('Unexpected server side error: ' + e);
     res.status(500).send('Unexpected server side error: ' + e);
   }
 });
