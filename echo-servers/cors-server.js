@@ -11,27 +11,73 @@ import multer from 'multer';
 import nodemailer from 'nodemailer';
 // import { model, Promise, connect } from 'mongoose';
 // import { model, connect } from 'mongoose';
-
+import googleapis from 'googleapis';
+//const { google } = require("googleapis");
+const { google } = googleapis;
 const { json, text: _text } = bodyparserpkg;
 const app = express();
+const OAuth2 = google.auth.OAuth2;
 const sendEmail = true;
 
 const mailuser = process.env.MAILUSER;
 const mailfrompwd = process.env.MAILFROMPWD;
 const mailfrom = process.env.MAILFROM;
 const expectedorigins = process.env.EXPECTEDORIGINS;
+const port = process.env.PORT || 5000;
+
+const clientid = process.env.CLIENTID || null;
+const clientsecret = process.env.CLIENTSECRET || null;
+const refreshtoken = process.env.REFRESHTOKEN || null;
+const echoemailcontent = process.env.ECHOEMAILCONTENT || null;
+const showmaplink = process.env.SHOWMAPLINK || null;
+
+
 
 var defaultmailto = process.env.MAILTO; // Setting the default mailto address
 var mailto;
+var transporter;
+var oauthconfigured = false;
 
-// Yahoo or yahoo should work as the service name for yahoo
-const transporter = nodemailer.createTransport({
-  service: 'SendGrid', // was gmail , but kept blocking
-  auth: {
-    user: mailuser,
-    pass: mailfrompwd
-  }
-});
+if (clientid && clientsecret && refreshtoken) {
+
+  const myOAuth2Client = new OAuth2(
+    clientid,
+    clientsecret,
+    "https://developers.google.com/oauthplayground"
+  );
+
+  myOAuth2Client.setCredentials({
+    refresh_token: refreshtoken
+  });
+
+  const accesstoken = myOAuth2Client.getAccessToken();
+  transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      type: "OAuth2",
+      user: mailfrom,
+      clientId: clientid,
+      clientSecret: clientsecret,
+      refreshToken: refreshtoken,
+      accessToken: accesstoken
+    }
+  });
+  console.log('OAUTH values configured, so defaulting to using gmail via OAUTH integration');
+  oauthconfigured = true;
+
+}
+else {
+  // Yahoo or yahoo should work as the service name for yahoo
+  transporter = nodemailer.createTransport({
+    service: 'SendGrid', // was gmail , but kept blocking
+    auth: {
+      user: mailuser,
+      pass: mailfrompwd
+    }
+  });
+  console.log('No OAUTH values configured, so using an email sending service');
+  oauthconfigured = false;
+}
 
 function sendAnEmail(item) {
   console.log('Mail to is: ' + mailto);
@@ -52,13 +98,20 @@ function sendAnEmail(item) {
   var attachname = rawattachname.replace(/[<>:"/\\|?*]/g, '').trim() + '.jpeg';
 
   console.log('Attachment name is: ' + attachname);
+
+  // Derive a amp link to include in the email
+  var maplink = '';
+
+  if (showmaplink && showmaplink === 'yes') {
+    maplink = '\n Show location: https://maps.google.com/maps/search/?api=1&query=' + item.latitude + ',' + item.longitude;
+  }
   var mailOptions = {
     from: mailfrom,
     to: mailto,
     subject: item.title,
-    // subject: item.title,
-    text: item.note + '\n' + 'At time: ' + item.datetime + '\n' + 'At location: ' + item.latitude + ' latitude and ' + item.longitude + ' longitude.',
-    // text: 'Field Notes test message'
+
+    text: item.note + '\n' + 'At time: ' + item.datetime + '\n' + 'At location: ' + item.latitude + ' latitude and ' + item.longitude + ' longitude.' + maplink,
+
     attachments: [
       {
         filename: attachname,
@@ -81,6 +134,7 @@ function sendAnEmail(item) {
       handleEmailingError(item, error);
     } else {
       console.log('Email sent: ' + info.response);
+      console.log('OAUTH configured? ' + oauthconfigured);
     }
   });
 }
@@ -116,10 +170,12 @@ function handleEmailingError(item, error) {
       console.log('Unable to forward on the error and the failing email. The problem may be with the SMTP service. Giving up.');
     } else {
       console.log('Email sent: ' + info.response);
+      console.log('OAUTH configured? ' + oauthconfigured);
     }
   });
 }
-const port = process.env.PORT || 5000;
+//const port = process.env.PORT || 5000;
+
 
 app.use((req, res, next) => {
   res.setHeader('Content-Type', 'text/plain');
@@ -146,10 +202,13 @@ app.post('/', [formParser, jsonParser, textParser], (req, res) => {
   // response status to indicate an error!
 
   try {
-    console.log('Received snaps as follows:');
+    console.log('Received headers on email sending request as follows:');
     console.log('\n\n');
 
     console.log(JSON.stringify(req.headers, null, 2));
+    console.log('\n\n');
+
+    console.log('Received snaps as follows:');
     console.log('\n\n');
 
     const contentType = req.get('content-type');
@@ -184,7 +243,12 @@ app.post('/', [formParser, jsonParser, textParser], (req, res) => {
 
     }
 
-    console.log(req.body);
+    if (echoemailcontent && echoemailcontent === 'yes') {
+      console.log(req.body);
+    }
+    else {
+      console.log('Echoing back of snaps not enabled (set echoemailcontent env variable to "yes" to enable).');
+    }
 
     console.log('Content type is ' + contentType);
     console.log('Finished receiving posted snaps.');
